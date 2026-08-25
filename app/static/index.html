@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CreditWise loan approval prediction demo">
+  <title>CreditWise — Loan Readiness Check</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="CreditWise home">
+      <span class="brand-mark" aria-hidden="true">CW</span>
+      <span>CreditWise</span>
+    </a>
+    <div class="model-status"><span class="status-dot"></span> Model online</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Machine learning · Credit assessment</div>
+      <h1>Know your loan readiness<br><span>before you apply.</span></h1>
+      <p>Enter an applicant profile and get an instant estimate from a logistic regression model trained on 950 labeled applications.</p>
+      <div class="hero-pills" aria-label="Service features">
+        <span>Instant result</span><span>Private by design</span><span>Explainable score</span>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <form id="loan-form" class="form-card" novalidate>
+        <div class="card-heading">
+          <div><span class="step-label">Application profile</span><h2>Tell us about the applicant</h2></div>
+          <span class="required-note">All fields required</span>
+        </div>
+
+        <fieldset>
+          <legend><span>01</span> Personal details</legend>
+          <div class="field-grid">
+            <label>Age <input name="Age" type="number" min="18" max="100" value="34" required><small>18–100 years</small></label>
+            <label>Gender <select name="Gender" required><option>Female</option><option selected>Male</option></select></label>
+            <label>Marital status <select name="Marital_Status" required><option>Single</option><option selected>Married</option></select></label>
+            <label>Dependents <input name="Dependents" type="number" min="0" max="20" value="1" required></label>
+            <label>Education <select name="Education_Level" required><option selected>Graduate</option><option>Not Graduate</option></select></label>
+            <label>Property area <select name="Property_Area" required><option>Rural</option><option selected>Semiurban</option><option>Urban</option></select></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span>02</span> Employment & income</legend>
+          <div class="field-grid">
+            <label>Employment status <select name="Employment_Status" required><option>Contract</option><option selected>Salaried</option><option>Self-employed</option><option>Unemployed</option></select></label>
+            <label>Employer category <select name="Employer_Category" required><option>Business</option><option>Government</option><option>MNC</option><option selected>Private</option><option>Unemployed</option></select></label>
+            <label>Applicant income <div class="input-prefix"><span>₹</span><input name="Applicant_Income" type="number" min="1" step="1" value="65000" required></div><small>Monthly income</small></label>
+            <label>Co-applicant income <div class="input-prefix"><span>₹</span><input name="Coapplicant_Income" type="number" min="0" step="1" value="12000" required></div><small>Enter 0 if not applicable</small></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span>03</span> Financial position</legend>
+          <div class="field-grid">
+            <label>Credit score <input name="Credit_Score" type="number" min="300" max="900" value="745" required><small>300–900</small></label>
+            <label>Existing loans <input name="Existing_Loans" type="number" min="0" max="50" value="1" required></label>
+            <label>Debt-to-income ratio <input name="DTI_Ratio" type="number" min="0" max="1" step="0.01" value="0.28" required><small>Decimal between 0 and 1</small></label>
+            <label>Savings <div class="input-prefix"><span>₹</span><input name="Savings" type="number" min="0" value="25000" required></div></label>
+            <label>Collateral value <div class="input-prefix"><span>₹</span><input name="Collateral_Value" type="number" min="0" value="40000" required></div></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span>04</span> Loan request</legend>
+          <div class="field-grid">
+            <label>Loan amount <div class="input-prefix"><span>₹</span><input name="Loan_Amount" type="number" min="1" value="18000" required></div></label>
+            <label>Term <div class="input-suffix"><input name="Loan_Term" type="number" min="1" max="480" value="48" required><span>months</span></div></label>
+            <label>Purpose <select name="Loan_Purpose" required><option>Business</option><option>Car</option><option>Education</option><option selected>Home</option><option>Personal</option></select></label>
+          </div>
+        </fieldset>
+
+        <div id="form-error" class="form-error" role="alert" hidden></div>
+        <button class="submit-button" type="submit"><span>Check loan readiness</span><span aria-hidden="true">→</span></button>
+        <p class="privacy-note">Your entries are used only to calculate this result and are not stored.</p>
+      </form>
+
+      <aside class="side-panel">
+        <div id="result-card" class="result-card result-empty" aria-live="polite">
+          <div class="result-icon" aria-hidden="true">↗</div>
+          <span class="step-label">Your result</span>
+          <h2 id="result-title">Ready when you are</h2>
+          <p id="result-copy">Complete the application profile to see the model's approval estimate.</p>
+          <div id="probability-block" class="probability-block" hidden>
+            <div class="probability-header"><span>Approval probability</span><strong id="probability-value">0%</strong></div>
+            <div class="meter"><span id="probability-meter"></span></div>
+            <div class="meter-labels"><span>Low</span><span>High</span></div>
+          </div>
+        </div>
+
+        <div class="insight-card">
+          <span class="step-label">Model snapshot</span>
+          <div class="metric-row"><div><strong id="accuracy">—</strong><span>Test accuracy</span></div><div><strong id="training-rows">—</strong><span>Training records</span></div></div>
+          <p>Built from the feature-engineered logistic regression workflow in your CreditWise notebook.</p>
+          <a href="/docs" target="_blank" rel="noreferrer">Explore the API <span>↗</span></a>
+        </div>
+
+        <div class="notice-card"><strong>Educational use only</strong><p>This estimate is not financial advice or an actual credit decision. Real lenders consider additional verified information.</p></div>
+      </aside>
+    </section>
+  </main>
+
+  <footer><span>CreditWise ML Project</span><span>FastAPI · scikit-learn</span></footer>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
+
