@@ -1,6 +1,7 @@
 """FastAPI entry point for CreditWise."""
 
 from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -13,6 +14,7 @@ from app.schemas import LoanApplication, PredictionResponse
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -61,9 +63,12 @@ async def predict(application: LoanApplication, request: Request) -> PredictionR
 
 
 @app.exception_handler(Exception)
-async def unexpected_error(_: Request, __: Exception) -> JSONResponse:
+async def unexpected_error(_: Request, error: Exception) -> JSONResponse:
+    logger.error(
+        "Unhandled error while processing a request",
+        exc_info=(type(error), error, error.__traceback__),
+    )
     return JSONResponse(
         status_code=500,
         content={"detail": "The prediction service encountered an unexpected error."},
     )
-

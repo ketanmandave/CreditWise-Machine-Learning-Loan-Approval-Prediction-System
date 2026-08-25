@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app import modeling
 from app.main import app
 
 
@@ -47,3 +48,18 @@ def test_invalid_credit_score_is_rejected():
         response = client.post("/api/predict", json=invalid)
     assert response.status_code == 422
 
+
+def test_incompatible_saved_model_is_retrained(monkeypatch):
+    replacement = object()
+    metadata = {"model": "replacement"}
+
+    monkeypatch.setattr(
+        modeling.joblib,
+        "load",
+        lambda _: (_ for _ in ()).throw(ValueError("incompatible artifact")),
+    )
+    monkeypatch.setattr(
+        modeling, "train_and_save", lambda: (replacement, metadata)
+    )
+
+    assert modeling.load_model() == (replacement, metadata)

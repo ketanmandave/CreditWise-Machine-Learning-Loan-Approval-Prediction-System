@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
@@ -23,6 +25,8 @@ DATA_PATH = ROOT / "loan_approval_data.csv"
 ARTIFACT_DIR = ROOT / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "loan_model.joblib"
 METADATA_PATH = ARTIFACT_DIR / "metadata.json"
+
+logger = logging.getLogger(__name__)
 
 RAW_FEATURES = [
     "Applicant_Income",
@@ -144,16 +148,34 @@ def train_and_save() -> tuple[Pipeline, dict[str, Any]]:
 
     final_model = build_pipeline()
     final_model.fit(X, y)
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(final_model, MODEL_PATH)
-    METADATA_PATH.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    try:
+        ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+        joblib.dump(final_model, MODEL_PATH)
+        METADATA_PATH.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    except OSError:
+        # The trained in-memory model is still usable on read-only platforms.
+        logger.warning("Could not persist the trained model artifacts", exc_info=True)
     return final_model, metrics
 
 
 def load_model() -> tuple[Pipeline, dict[str, Any]]:
     if not MODEL_PATH.exists() or not METADATA_PATH.exists():
         return train_and_save()
-    model = joblib.load(MODEL_PATH)
-    metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
-    return model, metadata
+    try:
+        model = joblib.load(MODEL_PATH)
+        metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
 
+        # A pickle made by another scikit-learn version can deserialize but then
+        # fail only when the first real prediction arrives. Exercise the full
+        # pipeline during startup so an incompatible artifact is retrained.
+        sample = pd.read_csv(DATA_PATH, nrows=1)[RAW_FEATURES]
+        probabilities = model.predict_proba(sample)
+        if probabilities.shape != (1, 2) or not np.isfinite(probabilities).all():
+            raise ValueError("The saved model returned invalid probabilities")
+        return model, metadata
+    except Exception:
+        logger.warning(
+            "Saved model artifact is unusable; retraining it for this runtime",
+            exc_info=True,
+        )
+        return train_and_save()

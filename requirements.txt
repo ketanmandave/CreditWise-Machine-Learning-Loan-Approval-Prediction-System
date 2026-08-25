@@ -4,7 +4,9 @@ uvicorn[standard]>=0.30,<1.0
 
 # Data & ML
 pandas>=2.2,<3.0
-scikit-learn>=1.5,<2.0
+# Model artifacts are not portable across scikit-learn releases. Keep this in
+# sync with the version used to generate artifacts/loan_model.joblib.
+scikit-learn==1.7.1
 joblib>=1.4,<2.0
 
 # Testing
